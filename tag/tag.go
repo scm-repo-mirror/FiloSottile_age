@@ -14,7 +14,7 @@ import (
 	"filippo.io/age"
 	"filippo.io/age/internal/format"
 	"filippo.io/age/plugin"
-	"filippo.io/age/tag/internal/hpke"
+	"filippo.io/hpke"
 	"filippo.io/nistec"
 )
 
@@ -115,7 +115,7 @@ func (r *Recipient) Wrap(fileKey []byte) ([]*age.Stanza, error) {
 		label, arg = p256MLKEM768TagLabel, "p256mlkem768tag"
 	}
 
-	enc, s, err := hpke.SetupSender(r.kem,
+	enc, s, err := hpke.NewSender(r.kem,
 		hpke.HKDFSHA256(), hpke.ChaCha20Poly1305(), label)
 	if err != nil {
 		return nil, fmt.Errorf("failed to set up HPKE sender: %v", err)
