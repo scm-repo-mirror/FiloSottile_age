@@ -4,14 +4,12 @@ go 1.24.0
 
 require (
 	filippo.io/edwards25519 v1.1.0
-	filippo.io/hpke v0.2.0
+	filippo.io/hpke v0.3.2
 	filippo.io/nistec v0.0.3
-	golang.org/x/crypto v0.41.0
-	golang.org/x/sys v0.35.0
-	golang.org/x/term v0.34.0
+	golang.org/x/crypto v0.44.0
+	golang.org/x/sys v0.38.0
+	golang.org/x/term v0.37.0
 )
-
-require filippo.io/bigmod v0.1.0 // indirect
 
 // Test dependencies.
 require (
