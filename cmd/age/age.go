@@ -31,6 +31,7 @@ const usage = `Usage:
     age [--encrypt] (-r RECIPIENT | -R PATH)... [--armor] [-o OUTPUT] [INPUT]
     age [--encrypt] --passphrase [--armor] [-o OUTPUT] [INPUT]
     age --decrypt [-i PATH]... [-o OUTPUT] [INPUT]
+    age --version
 
 Options:
     -e, --encrypt               Encrypt the input to the output. Default if omitted.
@@ -41,6 +42,7 @@ Options:
     -r, --recipient RECIPIENT   Encrypt to the specified RECIPIENT. Can be repeated.
     -R, --recipients-file PATH  Encrypt to recipients listed at PATH. Can be repeated.
     -i, --identity PATH         Use the identity file at PATH. Can be repeated.
+    -v, --version               Print the Version
 
 INPUT defaults to standard input, and OUTPUT defaults to standard output.
 If OUTPUT exists, it will be overwritten.
@@ -120,6 +122,7 @@ func main() {
 	)
 
 	flag.BoolVar(&versionFlag, "version", false, "print the version")
+	flag.BoolVar(&versionFlag, "v", false, "print the version")
 	flag.BoolVar(&decryptFlag, "d", false, "decrypt the input")
 	flag.BoolVar(&decryptFlag, "decrypt", false, "decrypt the input")
 	flag.BoolVar(&encryptFlag, "e", false, "encrypt the input")
