@@ -65,6 +65,7 @@ func ParseRecipient(s string) (*Recipient, error) {
 
 const compressedPointSize = 1 + 32
 const uncompressedPointSize = 1 + 32 + 32
+const x25519Size = 32
 
 // NewClassicRecipient returns a new P-256 [Recipient] from a raw public key.
 func NewClassicRecipient(publicKey []byte) (*Recipient, error) {
@@ -82,19 +83,26 @@ func NewClassicRecipient(publicKey []byte) (*Recipient, error) {
 	return &Recipient{k}, nil
 }
 
-// NewHybridRecipient returns a new hybrid P-256 + ML-KEM-768 [Recipient] from
+// NewHybridRecipient returns a new hybrid P-256/X25519 + ML-KEM-768 [Recipient] from
 // raw concatenated public keys.
 func NewHybridRecipient(publicKey []byte) (*Recipient, error) {
-	k, err := hpke.MLKEM768P256().NewPublicKey(publicKey)
+	var k hpke.PublicKey
+	var err error
+	if len(publicKey) == 1216 {
+		k, err = hpke.MLKEM768X25519().NewPublicKey(publicKey)
+	} else {
+		k, err = hpke.MLKEM768P256().NewPublicKey(publicKey)
+	}
 	if err != nil {
 		return nil, fmt.Errorf("invalid tagpq recipient public key: %v", err)
 	}
 	return &Recipient{k}, nil
 }
 
-// Hybrid reports whether r is a hybrid P-256 + ML-KEM-768 recipient.
+// Hybrid reports whether r is a hybrid P-256/X25519 + ML-KEM-768 recipient.
 func (r *Recipient) Hybrid() bool {
-	return r.pk.KEM().ID() == hpke.MLKEM768P256().ID()
+	hybridIds := []uint16{hpke.MLKEM768P256().ID(), hpke.MLKEM768X25519().ID()}
+	return slices.Contains(hybridIds, r.pk.KEM().ID())
 }
 
 func (r *Recipient) Wrap(fileKey []byte) ([]*age.Stanza, error) {
@@ -109,11 +117,21 @@ func (r *Recipient) Wrap(fileKey []byte) ([]*age.Stanza, error) {
 func (r *Recipient) Tag(enc []byte) ([]byte, error) {
 	label, tagRecipient := "age-encryption.org/p256tag", r.Bytes()
 	if r.Hybrid() {
-		label = "age-encryption.org/mlkem768p256tag"
-		// In hybrid mode, the tag is computed over just the P-256 part.
-		tagRecipient = tagRecipient[mlkem.EncapsulationKeySize768:]
-		if len(enc) != mlkem.CiphertextSize768+uncompressedPointSize {
-			return nil, fmt.Errorf("invalid ciphertext size")
+		switch r.pk.KEM().ID() {
+		case hpke.MLKEM768P256().ID():
+			label = "age-encryption.org/mlkem768p256tag"
+			// In hybrid mode, the tag is computed over just the P-256 part.
+			tagRecipient = tagRecipient[mlkem.EncapsulationKeySize768:]
+			if len(enc) != mlkem.CiphertextSize768+uncompressedPointSize {
+				return nil, fmt.Errorf("invalid ciphertext size")
+			}
+		case hpke.MLKEM768X25519().ID():
+			label = "age-encryption.org/mlkem768x25519tag"
+			// In hybrid mode, the tag is computed over just the P-256 part.
+			tagRecipient = tagRecipient[mlkem.EncapsulationKeySize768:]
+			if len(enc) != mlkem.CiphertextSize768+x25519Size {
+				return nil, fmt.Errorf("invalid ciphertext size")
+			}
 		}
 	} else if len(enc) != uncompressedPointSize {
 		return nil, fmt.Errorf("invalid ciphertext size")
@@ -136,7 +154,12 @@ func (r *Recipient) Tag(enc []byte) ([]byte, error) {
 func (r *Recipient) WrapWithLabels(fileKey []byte) ([]*age.Stanza, []string, error) {
 	label, arg := "age-encryption.org/p256tag", "p256tag"
 	if r.Hybrid() {
-		label, arg = "age-encryption.org/mlkem768p256tag", "mlkem768p256tag"
+		switch r.pk.KEM().ID() {
+		case hpke.MLKEM768P256().ID():
+			label, arg = "age-encryption.org/mlkem768p256tag", "mlkem768p256tag"
+		case hpke.MLKEM768X25519().ID():
+			label, arg = "age-encryption.org/mlkem768x25519tag", "mlkem768x25519tag"
+		}
 	}
 
 	enc, s, err := hpke.NewSender(r.pk, hpke.HKDFSHA256(), hpke.ChaCha20Poly1305(), []byte(label))
