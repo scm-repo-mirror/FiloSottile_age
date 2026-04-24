@@ -124,7 +124,7 @@ func (r *Recipient) Wrap(fileKey []byte) ([]*age.Stanza, error) {
 // identities compatible with tagged recipients.
 func (r *Recipient) Tag(enc []byte) ([]byte, error) {
 	var label string
-	var tagRecipient []byte
+	tagRecipient := r.Bytes()
 	if r.Hybrid() {
 		switch r.pk.KEM().ID() {
 		case hpke.MLKEM768P256().ID():
@@ -142,13 +142,10 @@ func (r *Recipient) Tag(enc []byte) ([]byte, error) {
 				return nil, fmt.Errorf("invalid ciphertext size")
 			}
 		}
-	} else if len(r.pk.Bytes()) == compressedPointSize {
-		if len(enc) != uncompressedPointSize {
-			return nil, fmt.Errorf("invalid ciphertext size")
-		}
-		label, tagRecipient = "age-encryption.org/p256tag", r.Bytes()
 	} else if len(enc) == curve25519.PointSize {
-		label, tagRecipient = "age-encryption.org/x25519tag", r.Bytes()
+		label = "age-encryption.org/x25519tag"
+	} else if len(enc) == uncompressedPointSize {
+		label = "age-encryption.org/p256tag"
 	} else {
 		return nil, fmt.Errorf("invalid ciphertext size")
 	}
@@ -176,10 +173,10 @@ func (r *Recipient) WrapWithLabels(fileKey []byte) ([]*age.Stanza, []string, err
 		case hpke.MLKEM768X25519().ID():
 			label, arg = "age-encryption.org/mlkem768x25519tag", "mlkem768x25519tag"
 		}
-	} else if len(r.pk.Bytes()) == compressedPointSize {
-		label, arg = "age-encryption.org/p256tag", "p256tag"
-	} else {
+	} else if len(r.pk.Bytes()) == curve25519.PointSize {
 		label, arg = "age-encryption.org/x25519tag", "x25519tag"
+	} else {
+		label, arg = "age-encryption.org/p256tag", "p256tag"
 	}
 
 	enc, s, err := hpke.NewSender(r.pk, hpke.HKDFSHA256(), hpke.ChaCha20Poly1305(), []byte(label))
