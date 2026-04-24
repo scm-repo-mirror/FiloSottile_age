@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// Package tag implements tagged P-256 or hybrid P-256 + ML-KEM-768 recipients,
+// Package tag implements tagged P-256/X25519 or hybrid P-256/X25519 + ML-KEM-768 recipients,
 // which can be used with identities stored on hardware keys, usually supported
 // by dedicated plugins.
 //
@@ -28,7 +28,7 @@ import (
 	"golang.org/x/crypto/curve25519"
 )
 
-// Recipient is a tagged P-256 or hybrid P-256 + ML-KEM-768 recipient.
+// Recipient is a tagged P-256/X25519 or hybrid P-256/X25519 + ML-KEM-768 recipient.
 //
 // The latter recipient is safe against future cryptographically-relevant
 // quantum computers, and can only be used along with other post-quantum
@@ -67,7 +67,7 @@ func ParseRecipient(s string) (*Recipient, error) {
 const compressedPointSize = 1 + 32
 const uncompressedPointSize = 1 + 32 + 32
 
-// NewClassicRecipient returns a new P-256 [Recipient] from a raw public key.
+// NewClassicRecipient returns a new P-256/X25519 [Recipient] from a raw public key.
 func NewClassicRecipient(publicKey []byte) (*Recipient, error) {
 	var k hpke.PublicKey
 	var err error
@@ -136,7 +136,7 @@ func (r *Recipient) Tag(enc []byte) ([]byte, error) {
 			}
 		case hpke.MLKEM768X25519().ID():
 			label = "age-encryption.org/mlkem768x25519tag"
-			// In hybrid mode, the tag is computed over just the P-256 part.
+			// In hybrid mode, the tag is computed over just the X25519 part.
 			tagRecipient = tagRecipient[mlkem.EncapsulationKeySize768:]
 			if len(enc) != mlkem.CiphertextSize768+curve25519.PointSize {
 				return nil, fmt.Errorf("invalid ciphertext size")
@@ -161,7 +161,7 @@ func (r *Recipient) Tag(enc []byte) ([]byte, error) {
 }
 
 // WrapWithLabels implements [age.RecipientWithLabels], returning a single
-// "postquantum" label if r is a hybrid P-256 + ML-KEM-768 recipient. This
+// "postquantum" label if r is a hybrid P-256/X25519 + ML-KEM-768 recipient. This
 // ensures a hybrid Recipient can't be mixed with other recipients that would
 // defeat its post-quantum security.
 //
